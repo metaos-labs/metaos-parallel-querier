@@ -3,6 +3,7 @@ package sophon_parallel_querier
 import (
 	"context"
 	"fmt"
+	"github.com/cosmos/cosmos-sdk/client"
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
 	grpctypes "github.com/cosmos/cosmos-sdk/types/grpc"
@@ -22,14 +23,15 @@ var _ grpc.ClientConn = ParallelQuerier{}
 var protoCodec = encoding.GetCodec(proto.Name)
 
 type ParallelQuerier struct {
+	// Override this with a custom grpc.ClientConn
+	client.Context
 	app types.Application
-	ir  codectypes.InterfaceRegistry
 }
 
-func NewParallelQuerier(app types.Application, ir codectypes.InterfaceRegistry) *ParallelQuerier {
+func NewParallelQuerier(app types.Application, ctx client.Context) *ParallelQuerier {
 	return &ParallelQuerier{
-		app: app,
-		ir:  ir,
+		Context: ctx,
+		app:     app,
 	}
 }
 
@@ -87,8 +89,8 @@ func (p ParallelQuerier) Invoke(
 		*header.HeaderAddr = md
 	}
 
-	if p.ir != nil {
-		return codectypes.UnpackInterfaces(reply, p.ir)
+	if p.Context.InterfaceRegistry != nil {
+		return codectypes.UnpackInterfaces(reply, p.Context.InterfaceRegistry)
 	}
 	return nil
 }
