@@ -11,9 +11,11 @@ import (
 	"github.com/gogo/protobuf/grpc"
 	"github.com/tendermint/tendermint/abci/types"
 	grpc2 "google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/encoding"
 	"google.golang.org/grpc/encoding/proto"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 	"reflect"
 	"strconv"
 )
@@ -74,6 +76,18 @@ func (p ParallelQuerier) Invoke(
 		Height: height,
 	}
 	res := p.app.Query(abciReq)
+	if res.IsErr() {
+		switch res.Code {
+		case sdkerrors.ErrInvalidRequest.ABCICode():
+			return status.Error(codes.InvalidArgument, res.Log)
+		case sdkerrors.ErrUnauthorized.ABCICode():
+			return status.Error(codes.Unauthenticated, res.Log)
+		case sdkerrors.ErrKeyNotFound.ABCICode():
+			return status.Error(codes.NotFound, res.Log)
+		default:
+			return status.Error(codes.Unknown, res.Log)
+		}
+	}
 	err = protoCodec.Unmarshal(res.Value, reply)
 	if err != nil {
 		return err
