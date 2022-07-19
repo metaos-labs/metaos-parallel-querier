@@ -16,13 +16,15 @@ import (
 )
 
 const (
-	FlagApiParallelEnable  = "api.parallel.enable"
-	FlagApiParallelAddress = "api.parallel.address"
+	FlagApiParallelEnable                  = "api.parallel.enable"
+	FlagApiParallelAddress                 = "api.parallel.address"
+	FlagApiParallelPrometheusRetentionTime = "api.parallel.prometheus.retention-time"
 )
 
 var (
-	apiParallelEnable  *bool
-	apiParallelAddress *string
+	apiParallelEnable                  *bool
+	apiParallelAddress                 *string
+	apiParallelPrometheusRetentionTime *int64
 )
 
 func CustomizeStartCmd() {
@@ -34,6 +36,7 @@ func CustomizeStartCmd() {
 func CustomizeStartCmdFromCmd(startCmd *cobra.Command) {
 	apiParallelEnable = startCmd.Flags().Bool(FlagApiParallelEnable, false, "Defines if Cosmos-sdk parallel REST server should be enabled")
 	apiParallelAddress = startCmd.Flags().String(FlagApiParallelAddress, "tcp://0.0.0.0:2317", "the parallel REST server address to listen on")
+	apiParallelPrometheusRetentionTime = startCmd.Flags().Int64(FlagApiParallelPrometheusRetentionTime, 0, "Defines the Prometheus metrics retention time in seconds")
 }
 
 func StartParallelServer(apiSvr *api.Server, apiConfig config.APIConfig, logger log.Logger, cb func(apiSvr *api.Server) error) (*api.Server, error) {
@@ -42,6 +45,9 @@ func StartParallelServer(apiSvr *api.Server, apiConfig config.APIConfig, logger 
 	}
 	if *apiParallelEnable == false {
 		return nil, nil
+	}
+	if apiParallelPrometheusRetentionTime == nil {
+		*apiParallelPrometheusRetentionTime = 0
 	}
 	clientCtx := apiSvr.ClientCtx
 
@@ -55,17 +61,19 @@ func StartParallelServer(apiSvr *api.Server, apiConfig config.APIConfig, logger 
 
 	errCh := make(chan error)
 	go func() {
+
 		err := parallelApiSrv.Start(config.Config{
 			Telemetry: telemetry.Config{
-				ServiceName:         "api-parallel-server",
-				Enabled:             true,
-				EnableHostname:      true,
-				EnableHostnameLabel: true,
-				EnableServiceLabel:  true,
+				ServiceName:             "",
+				Enabled:                 true,
+				EnableHostname:          true,
+				EnableHostnameLabel:     true,
+				EnableServiceLabel:      true,
+				PrometheusRetentionTime: *apiParallelPrometheusRetentionTime,
 			},
 			API: config.APIConfig{
 				Enable:             apiConfig.Enable,
-				Swagger:            false,
+				Swagger:            apiConfig.Swagger,
 				EnableUnsafeCORS:   apiConfig.EnableUnsafeCORS,
 				Address:            *apiParallelAddress,
 				MaxOpenConnections: apiConfig.MaxOpenConnections,
