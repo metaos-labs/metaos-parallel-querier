@@ -1,4 +1,4 @@
-module github.com/sophon-labs/sophon-parallel-querier
+module github.com/metaos-labs/metaos-parallel-querier
 
 go 1.17
 

@@ -1,4 +1,4 @@
-package sophon_parallel_querier
+package metaos_parallel_querier
 
 import (
 	"context"
